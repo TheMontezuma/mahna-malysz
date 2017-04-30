@@ -3,7 +3,7 @@ run: mama_hsc.xex
 	cygstart $<
 
 mama_hsc.xex: gra.xex
-	xebin p -a -15391 -o $@ $<
+	xebin p -a -16381 -v -o $@ $<
 
 gra.xex: gra.asx tlo.fnt tlo.scr sprajty.asx datamatrix.asx
 	xasm /p /q /o:$@ $<

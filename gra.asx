@@ -1,3 +1,18 @@
+DMACTL equ $D400
+DDEVIC equ $0300
+DUNIT  equ $0301
+DCOMND equ $0302
+DSTATS equ $0303
+DBUFLO equ $0304
+DBUFHI equ $0305
+DTIMLO equ $0306
+DAUX1  equ $030A
+DAUX2  equ $030B
+DBYTLO equ $0308
+DBYTHI equ $0309
+SIOV   equ $E459
+SOUNDR equ $0041
+
 DataMatrix_code	equ	$2100
 DataMatrix_data	equ	$3c00
 DataMatrix_SIZE	equ	24
@@ -135,7 +150,7 @@ banend
 	dta	d'                        '
 
 url
-	dta	c'http://atari.pl/hsc/?x=0030'
+	dta	c'http://atari.pl/hsc/?x=003000000'
 url_len	equ	*-url
 
 	icl	'sprajty.asx'
@@ -329,6 +344,8 @@ ban
 	ldy	>urlDl
 	lda	#0
 	jsr	setDl
+	jsr	urlsubmituj
+    
 hscuj
 	jsr	ramka
 	jsr	msx_player
@@ -927,10 +944,11 @@ urlRecord
 	sta	yourRecord+15,x
 	sne:lda	#'0'
 	ora	#' '
-	sta	DataMatrix_data+url_len,x
+	sta	DataMatrix_data+url_len-5,x
+	sta	url+url_len-5,x
 	dex
 	bpl	urlRecord
-	mva	#DataMatrix_EOF	DataMatrix_data+url_len+5
+	mva	#DataMatrix_EOF	DataMatrix_data+url_len
 	jsr	DataMatrix_code
 	mwa	#DataMatrix_symbol	urlGfxSrc
 	ldx	#0
@@ -957,6 +975,44 @@ urlGfxSrc	equ	*-2
 urlClr
 	lda	#0
 :2	sta	urlScreen,x+
+	rts
+    
+urlsubmituj
+
+	LDY #$00
+	STY DMACTL
+
+	LDA #$45
+	STA DDEVIC
+	LDA #$01
+	STA DUNIT
+	LDA #$55
+	STA DCOMND
+	LDA #$80
+	STA DSTATS
+	LDA #<url
+	STA DBUFLO
+	LDA #>url
+	STA DBUFHI
+	LDA #$03
+	STA DTIMLO
+	LDA #url_len
+	STA DAUX1
+	STA DBYTLO
+	LDA #$00
+	STA DBYTHI
+	STA DAUX2
+	STA SOUNDR
+	JSR SIOV
+    
+	LDA #0
+	STA $D208
+	LDA #3
+	STA $D20F
+	STA SOUNDR
+    
+	LDY #$22
+	STY DMACTL
 	rts
 
 	run	main
