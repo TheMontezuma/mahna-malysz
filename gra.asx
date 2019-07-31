@@ -1,16 +1,14 @@
 DMACTL equ $D400
-DDEVIC equ $0300
-DUNIT  equ $0301
-DCOMND equ $0302
-DSTATS equ $0303
-DBUFLO equ $0304
-DBUFHI equ $0305
-DTIMLO equ $0306
-DAUX1  equ $030A
-DAUX2  equ $030B
-DBYTLO equ $0308
-DBYTHI equ $0309
-SIOV   equ $E459
+IOCB   equ $0340
+ICCHID equ IOCB+0
+ICCMD  equ IOCB+2
+ICBAL  equ IOCB+4
+ICBAH  equ IOCB+5
+ICBLL  equ IOCB+8
+ICBLH  equ IOCB+9
+ICAX1  equ IOCB+10
+ICAX2  equ IOCB+11
+CIOV   equ $E456
 SOUNDR equ $0041
 
 DataMatrix_code	equ	$2100
@@ -152,6 +150,9 @@ banend
 url
 	dta	c'http://atari.pl/hsc/?x=003000000'
 url_len	equ	*-url
+
+browser_device
+	dta c'B:'
 
 	icl	'sprajty.asx'
 
@@ -345,7 +346,7 @@ ban
 	lda	#0
 	jsr	setDl
 	jsr	urlsubmituj
-    
+
 hscuj
 	jsr	ramka
 	jsr	msx_player
@@ -976,44 +977,73 @@ urlClr
 	lda	#0
 :2	sta	urlScreen,x+
 	rts
-    
+
 urlsubmituj
 
-	LDY #$00
-	STY DMACTL
-
-	LDA #$45
-	STA DDEVIC
-	LDA #$01
-	STA DUNIT
-	LDA #$55
-	STA DCOMND
-	LDA #$80
-	STA DSTATS
-	LDA #<url
-	STA DBUFLO
-	LDA #>url
-	STA DBUFHI
-	LDA #$03
-	STA DTIMLO
-	LDA #url_len
-	STA DAUX1
-	STA DBYTLO
-	LDA #$00
-	STA DBYTHI
-	STA DAUX2
-	STA SOUNDR
-	JSR SIOV
-    
-	LDA #0
-	STA $D208
-	LDA #3
-	STA $D20F
-	STA SOUNDR
-    
-	LDY #$22
-	STY DMACTL
+	jsr lookup
+	bpl do_cio
 	rts
+
+do_cio
+
+	ldy #$00
+	sty DMACTL
+
+	lda #$03 ; open
+	sta ICCMD,x
+	lda #<browser_device
+	sta ICBAL,x
+	lda #>browser_device
+	sta ICBAH,x
+	lda #$00
+	sta ICBLH,x
+	lda #$02
+	sta ICBLL,x
+	lda #$08
+	sta ICAX1,x
+	lda #$00
+	sta ICAX2,x
+	jsr CIOV
+
+	lda #$09 ; write
+	sta ICCMD,x
+	lda #<url
+	sta ICBAL,x
+	lda #>url
+	sta ICBAH,x
+	lda #$00
+	sta ICBLH,x
+	lda #url_len
+	sta ICBLL,x
+	jsr CIOV
+
+	lda #$0c ; close
+	sta ICCMD,x
+	jsr CIOV
+
+	lda #0
+	sta $D208
+	lda #3
+	sta $D20F
+	sta SOUNDR
+
+	ldy #$22
+	sty DMACTL
+
+	rts
+
+lookup	ldx #$00 ; search for a free cio channel
+		ldy #$01
+loop	lda icchid,x
+		cmp #$ff
+		beq found
+		txa
+		clc
+		adc #$10
+		tax
+		bpl loop
+		ldy #-95 ; error code "too many channels open"
+found	rts      ; x contains the offset for a channel
 
 	run	main
 	end
